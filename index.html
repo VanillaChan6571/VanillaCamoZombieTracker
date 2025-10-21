@@ -254,22 +254,55 @@
             margin-left: 28px;
         }
 
-        .reset-btn {
-            background: #e94560;
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .reset-btn, .export-btn, .import-btn {
             color: white;
             border: none;
             padding: 12px 30px;
             font-size: 1.1em;
             border-radius: 5px;
             cursor: pointer;
-            margin-top: 20px;
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .export-btn {
+            background: #4ecca3;
+        }
+
+        .export-btn:hover {
+            background: #3db892;
+            transform: translateY(-2px);
+        }
+
+        .import-btn {
+            background: #4a90e2;
+        }
+
+        .import-btn:hover {
+            background: #3a7bc8;
+            transform: translateY(-2px);
+        }
+
+        .reset-btn {
+            background: #e94560;
         }
 
         .reset-btn:hover {
             background: #d63651;
+            transform: translateY(-2px);
+        }
+
+        #import-file {
+            display: none;
         }
 
         .loading {
@@ -316,7 +349,13 @@
             <div class="loading">Select a category to begin tracking your camos!</div>
         </div>
 
-        <button class="reset-btn" onclick="resetProgress()">Reset All Progress</button>
+        <div class="action-buttons">
+            <button class="export-btn" onclick="exportProgress()">Export Progress</button>
+            <button class="import-btn" onclick="importProgress()">Import Progress</button>
+            <button class="reset-btn" onclick="resetProgress()">Reset All Progress</button>
+        </div>
+
+        <input type="file" id="import-file" accept=".json" onchange="handleImportFile(event)">
     </div>
 
     <script>
@@ -540,6 +579,82 @@
                 `${completedCamos} / ${totalCamos} Camos Completed (${percentage}%)`;
             document.getElementById('weapon-progress').textContent =
                 `${completedWeapons} / ${totalWeapons} Weapons Complete`;
+        }
+
+        // Export progress to JSON file
+        function exportProgress() {
+            const progress = localStorage.getItem('bo6CamoProgress');
+            const collapsed = localStorage.getItem('bo6CollapsedWeapons');
+
+            const backup = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                data: {
+                    bo6CamoProgress: progress ? JSON.parse(progress) : {},
+                    bo6CollapsedWeapons: collapsed ? JSON.parse(collapsed) : []
+                }
+            };
+
+            const dataStr = JSON.stringify(backup, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `bo6-camo-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            alert('Progress exported successfully!');
+        }
+
+        // Import progress from JSON file
+        function importProgress() {
+            document.getElementById('import-file').click();
+        }
+
+        function handleImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const backup = JSON.parse(e.target.result);
+
+                    // Validate backup structure
+                    if (!backup.data || !backup.data.bo6CamoProgress) {
+                        throw new Error('Invalid backup file format');
+                    }
+
+                    const confirmMsg = `Import backup from ${backup.exportDate ? new Date(backup.exportDate).toLocaleDateString() : 'unknown date'}?\n\nThis will replace your current progress!`;
+
+                    if (confirm(confirmMsg)) {
+                        // Save to localStorage
+                        localStorage.setItem('bo6CamoProgress', JSON.stringify(backup.data.bo6CamoProgress));
+                        if (backup.data.bo6CollapsedWeapons) {
+                            localStorage.setItem('bo6CollapsedWeapons', JSON.stringify(backup.data.bo6CollapsedWeapons));
+                        }
+
+                        // Reload current category to reflect changes
+                        if (currentCategory) {
+                            loadCategory(currentCategory);
+                        }
+                        updateProgress();
+
+                        alert('Progress imported successfully!');
+                    }
+                } catch (error) {
+                    alert('Error importing backup: ' + error.message + '\n\nPlease make sure you selected a valid backup file.');
+                }
+
+                // Reset file input
+                event.target.value = '';
+            };
+
+            reader.readAsText(file);
         }
 
         // Reset all progress
