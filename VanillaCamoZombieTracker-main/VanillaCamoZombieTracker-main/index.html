@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+        <link href = styles/styles.css rel = "stylesheet" type = "text/css">
+
+	<link rel="apple-touch-icon" sizes="57x57" href="favicon/apple-icon-57x57.png">
+	<link rel="apple-touch-icon" sizes="60x60" href="favicon/apple-icon-60x60.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="favicon/apple-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="76x76" href="favicon/apple-icon-76x76.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="favicon/apple-icon-114x114.png">
+	<link rel="apple-touch-icon" sizes="120x120" href="favicon/apple-icon-120x120.png">
+	<link rel="apple-touch-icon" sizes="144x144" href="favicon/apple-icon-144x144.png">
+	<link rel="apple-touch-icon" sizes="152x152" href="favicon/apple-icon-152x152.png">
+	<link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-icon-180x180.png">
+	<link rel="icon" type="image/png" sizes="192x192"  href="favicon/android-icon-192x192.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="96x96" href="favicon/favicon-96x96.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+	<link rel="manifest" href="favicon/manifest.json">
+	<meta name="msapplication-TileColor" content="#ffffff">
+	<meta name="msapplication-TileImage" content="favicon/ms-icon-144x144.png">
+	<meta name="theme-color" content="#ffffff">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanilla's Camo Zombies Tracker [BO6]</title>
+   
+</head>
+<body>
+    <div class="container">
+        <h1>🧟 <span style="color: #ff69b4;">Vanilla's</span> <span style="color: #4ecca3;">Camo Zombies Tracker</span> <span style="color: #ff8c00;">[BO6]</span> 🧟</h1>
+
+        <div class="progress-summary">
+            <h2>Overall Progress</h2>
+            <p id="overall-progress">0 / 1005 Camos Completed (0%)</p>
+            <p id="weapon-progress">0 / 67 Weapons Complete</p>
+        </div>
+
+        <div class="info-box" style="text-align: center; background: rgba(255, 105, 180, 0.1); border-color: #ff69b4;">
+            <p><h2><span style="color: #add8e6;">Last Updated: 10/21/2025</span></h2></p>
+			<p><h3><span style="color: #00ff00;">Last Added: Chainsaw [Melee]</span></h3></p>
+            <p>💾 Importing/Exporting your .json file can be found at the bottom of the page</p>
+        </div>
+
+        <div class="info-box">
+            <h3>📋 Camo Structure (All Weapons)</h3>
+            <ul>
+                <li><strong>Military Camos (9):</strong> 100, 200, 300, 400, 600, 800, 1000, 1500, 2000 Critical Kills (Headshots)</li>
+                <li><strong>Special Camos (2):</strong> Unique challenges per weapon (see below)</li>
+                <li><strong>Mastery Camos (4):</strong> Mystic Gold, Opal, Afterlife, Nebula (unlock after completing all Special camos)</li>
+            </ul>
+        </div>
+
+        <div class="category-tabs">
+            <a href="categories/assault-rifles.html" class="tab-btn">Assault Rifles</a>
+            <a href="categories/smgs.html" class="tab-btn">SMGs</a>
+            <a href="categories/shotguns.html" class="tab-btn">Shotguns</a>
+            <a href="categories/lmgs.html" class="tab-btn">LMGs</a>
+            <a href="categories/marksman-rifles.html" class="tab-btn">Marksman Rifles</a>
+            <a href="categories/sniper-rifles.html" class="tab-btn">Sniper Rifles</a>
+            <a href="categories/pistols.html" class="tab-btn">Pistols</a>
+            <a href="categories/launchers.html" class="tab-btn">Launchers</a>
+            <a href="categories/specials.html" class="tab-btn">Specials</a>
+            <a href="categories/melee.html" class="tab-btn">Melee</a>
+        </div>
+
+        <div id="category-content">
+            <div class="loading">Select a category to begin tracking your camos!</div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="export-btn" onclick="exportProgress()">Export Progress</button>
+            <button class="import-btn" onclick="importProgress()">Import Progress</button>
+            <button class="reset-btn" onclick="resetProgress()">Reset All Progress</button>
+        </div>
+
+        <input type="file" id="import-file" accept=".json" onchange="handleImportFile(event)">
+    </div>
+
+    <script>
+        let currentCategory = null;
+
+        // Load category content
+        async function loadCategory(categoryName) {
+            const content = document.getElementById('category-content');
+            content.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const response = await fetch(`categories/${categoryName}.html?v=${Date.now()}`);
+                if (!response.ok) throw new Error('Category not found');
+
+                const html = await response.text();
+                content.innerHTML = html;
+
+                // Update active tab
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.category === categoryName);
+                });
+
+                currentCategory = categoryName;
+
+                // Setup event listeners first (creates buttons), then restore progress
+                setupEventListeners();
+                restoreProgress();
+                updateProgress();
+            } catch (error) {
+                content.innerHTML = '<div class="loading">Error loading category. Please try again.</div>';
+            }
+        }
+
+        // Setup event listeners for checkboxes and collapsibles
+        function setupEventListeners() {
+            // Add Complete buttons to each weapon
+            document.querySelectorAll('.weapon').forEach(weapon => {
+                const weaponName = weapon.querySelector('.weapon-name');
+                if (!weaponName.querySelector('.complete-btn')) {
+                    const completeBtn = document.createElement('button');
+                    completeBtn.className = 'complete-btn';
+                    completeBtn.textContent = 'Complete';
+                    weaponName.insertBefore(completeBtn, weaponName.firstChild);
+
+                    // Update button state
+                    updateCompleteButtonState(weapon);
+
+                    // Complete button click handler
+                    completeBtn.addEventListener('click', function(e) {
+                        e.stopPropagation(); // Prevent collapse toggle
+                        toggleWeaponComplete(weapon);
+                    });
+                }
+            });
+
+            // Checkbox listeners
+            document.querySelectorAll('.camo-item input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const camoItem = this.closest('.camo-item');
+                    const weapon = this.closest('.weapon');
+                    camoItem.classList.toggle('completed', this.checked);
+                    updateCompleteButtonState(weapon);
+                    saveProgress();
+                    updateProgress();
+                });
+            });
+
+            // Collapsible weapon listeners
+            document.querySelectorAll('.weapon-name').forEach(weaponName => {
+                weaponName.addEventListener('click', function(e) {
+                    // Don't collapse if clicking the complete button
+                    if (e.target.classList.contains('complete-btn')) return;
+
+                    const weapon = this.closest('.weapon');
+                    weapon.classList.toggle('collapsed');
+                    saveCollapsedState();
+                });
+            });
+        }
+
+        // Toggle all checkboxes for a weapon
+        function toggleWeaponComplete(weapon) {
+            const checkboxes = weapon.querySelectorAll('.camo-item input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = !allChecked;
+                const camoItem = checkbox.closest('.camo-item');
+                camoItem.classList.toggle('completed', checkbox.checked);
+            });
+
+            updateCompleteButtonState(weapon);
+            saveProgress();
+            updateProgress();
+        }
+
+        // Update the complete button state based on weapon completion
+        function updateCompleteButtonState(weapon) {
+            const completeBtn = weapon.querySelector('.complete-btn');
+            if (!completeBtn) return; // Safety check
+
+            const weaponName = weapon.querySelector('.weapon-name');
+            const checkboxes = weapon.querySelectorAll('.camo-item input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+
+            if (allChecked) {
+                completeBtn.classList.add('all-complete');
+                completeBtn.textContent = 'Reset';
+                weaponName.classList.add('weapon-complete');
+            } else {
+                completeBtn.classList.remove('all-complete');
+                completeBtn.textContent = 'Complete';
+                weaponName.classList.remove('weapon-complete');
+            }
+        }
+
+        // Save progress to localStorage
+        function saveProgress() {
+            // Load existing progress first
+            const saved = localStorage.getItem('bo6CamoProgress');
+            const progress = saved ? JSON.parse(saved) : {};
+
+            const checkboxes = document.querySelectorAll('.camo-item input[type="checkbox"]');
+
+            checkboxes.forEach(checkbox => {
+                const weapon = checkbox.closest('.weapon');
+                const weaponId = weapon?.dataset.weapon;
+                const label = checkbox.nextElementSibling?.textContent;
+
+                if (weaponId && label) {
+                    if (!progress[weaponId]) progress[weaponId] = [];
+
+                    // Remove the label if it exists (to avoid duplicates)
+                    progress[weaponId] = progress[weaponId].filter(l => l !== label);
+
+                    // Add it back if checked
+                    if (checkbox.checked) {
+                        progress[weaponId].push(label);
+                    }
+                }
+            });
+
+            localStorage.setItem('bo6CamoProgress', JSON.stringify(progress));
+        }
+
+        // Restore progress from localStorage
+        function restoreProgress() {
+            const saved = localStorage.getItem('bo6CamoProgress');
+            if (!saved) return;
+
+            const progress = JSON.parse(saved);
+
+            document.querySelectorAll('.weapon').forEach(weapon => {
+                const weaponId = weapon.dataset.weapon;
+                const completed = progress[weaponId] || [];
+
+                weapon.querySelectorAll('.camo-item').forEach(item => {
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    const label = checkbox?.nextElementSibling?.textContent;
+
+                    if (label && completed.includes(label)) {
+                        checkbox.checked = true;
+                        item.classList.add('completed');
+                    }
+                });
+
+                // Update complete button state after restoring
+                updateCompleteButtonState(weapon);
+            });
+
+            restoreCollapsedState();
+        }
+
+        // Save collapsed state
+        function saveCollapsedState() {
+            const collapsed = [];
+            document.querySelectorAll('.weapon.collapsed').forEach(weapon => {
+                const weaponId = weapon.dataset.weapon;
+                if (weaponId) collapsed.push(weaponId);
+            });
+            localStorage.setItem('bo6CollapsedWeapons', JSON.stringify(collapsed));
+        }
+
+        // Restore collapsed state
+        function restoreCollapsedState() {
+            const saved = localStorage.getItem('bo6CollapsedWeapons');
+            if (!saved) return;
+
+            const collapsed = JSON.parse(saved);
+            document.querySelectorAll('.weapon').forEach(weapon => {
+                const weaponId = weapon.dataset.weapon;
+                if (collapsed.includes(weaponId)) {
+                    weapon.classList.add('collapsed');
+                }
+            });
+        }
+
+        // Update overall progress
+        function updateProgress() {
+            const totalCamos = 1005; // 67 weapons × 15 camos (9 military + 2 special + 4 mastery)
+            const totalWeapons = 67;
+
+            // Count completed camos across all saved data
+            const saved = localStorage.getItem('bo6CamoProgress');
+            let completedCamos = 0;
+            let completedWeapons = 0;
+
+            if (saved) {
+                const progress = JSON.parse(saved);
+                Object.values(progress).forEach(weaponCamos => {
+                    completedCamos += weaponCamos.length;
+                    if (weaponCamos.length === 15) { // All camos for a weapon
+                        completedWeapons++;
+                    }
+                });
+            }
+
+            const percentage = ((completedCamos / totalCamos) * 100).toFixed(1);
+
+            document.getElementById('overall-progress').textContent =
+                `${completedCamos} / ${totalCamos} Camos Completed (${percentage}%)`;
+            document.getElementById('weapon-progress').textContent =
+                `${completedWeapons} / ${totalWeapons} Weapons Complete`;
+        }
+
+        // Export progress to JSON file
+        function exportProgress() {
+            const progress = localStorage.getItem('bo6CamoProgress');
+            const collapsed = localStorage.getItem('bo6CollapsedWeapons');
+
+            const backup = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                data: {
+                    bo6CamoProgress: progress ? JSON.parse(progress) : {},
+                    bo6CollapsedWeapons: collapsed ? JSON.parse(collapsed) : []
+                }
+            };
+
+            const dataStr = JSON.stringify(backup, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `bo6-camo-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            alert('Progress exported successfully!');
+        }
+
+        // Import progress from JSON file
+        function importProgress() {
+            document.getElementById('import-file').click();
+        }
+
+        function handleImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const backup = JSON.parse(e.target.result);
+
+                    // Validate backup structure
+                    if (!backup.data || !backup.data.bo6CamoProgress) {
+                        throw new Error('Invalid backup file format');
+                    }
+
+                    const confirmMsg = `Import backup from ${backup.exportDate ? new Date(backup.exportDate).toLocaleDateString() : 'unknown date'}?\n\nThis will replace your current progress!`;
+
+                    if (confirm(confirmMsg)) {
+                        // Save to localStorage
+                        localStorage.setItem('bo6CamoProgress', JSON.stringify(backup.data.bo6CamoProgress));
+                        if (backup.data.bo6CollapsedWeapons) {
+                            localStorage.setItem('bo6CollapsedWeapons', JSON.stringify(backup.data.bo6CollapsedWeapons));
+                        }
+
+                        // Reload current category to reflect changes
+                        if (currentCategory) {
+                            loadCategory(currentCategory);
+                        }
+                        updateProgress();
+
+                        alert('Progress imported successfully!');
+                    }
+                } catch (error) {
+                    alert('Error importing backup: ' + error.message + '\n\nPlease make sure you selected a valid backup file.');
+                }
+
+                // Reset file input
+                event.target.value = '';
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Reset all progress
+        function resetProgress() {
+            if (confirm('Are you sure you want to reset ALL progress? This cannot be undone!')) {
+                localStorage.removeItem('bo6CamoProgress');
+                localStorage.removeItem('bo6CollapsedWeapons');
+
+                document.querySelectorAll('.camo-item input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = false;
+                    checkbox.closest('.camo-item').classList.remove('completed');
+                });
+
+                updateProgress();
+            }
+        }
+
+        // Tab click handlers
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                loadCategory(btn.dataset.category);
+            });
+        });
+
+        // Load first category on page load
+        window.addEventListener('load', () => {
+            updateProgress(); // Update progress even before loading a category
+            loadCategory('assault-rifles');
+        });
+    </script>
+</body>
+</html>
