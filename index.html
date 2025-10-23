@@ -32,8 +32,8 @@
 
         <div class="progress-summary">
             <h2>Overall Progress</h2>
-            <p id="overall-progress">0 / 1005 Camos Completed (0%)</p>
-            <p id="weapon-progress">0 / 67 Weapons Complete</p>
+            <p id="overall-progress">0 / 1005 Camos Completed (0%)</p> <!-- needs to track JSON progress -->
+            <p id="weapon-progress">0 / 67 Weapons Complete</p> <!-- needs to track JSON progress -->
         </div>
 
         <div class="info-box" style="text-align: center; background: rgba(255, 105, 180, 0.1); border-color: #ff69b4;">
@@ -46,7 +46,7 @@
             <h3>📋 Camo Structure (All Weapons)</h3>
             <ul>
                 <li><strong>Military Camos (9):</strong> 100, 200, 300, 400, 600, 800, 1000, 1500, 2000 Critical Kills (Headshots)</li>
-                <li><strong>Special Camos (2):</strong> Unique challenges per weapon (see below)</li>
+                <li><strong>Special Camos (2):</strong> Unique challenges per weapon (unlock after completing all Military Camos, see individual weapons)</li>
                 <li><strong>Mastery Camos (4):</strong> Mystic Gold, Opal, Afterlife, Nebula (unlock after completing all Special camos)</li>
             </ul>
         </div>
@@ -77,15 +77,19 @@
         <input type="file" id="import-file" accept=".json" onchange="handleImportFile(event)">
     </div>
 
+    <script src="scripts/state-manager.js"></script>
     <script>
         let currentCategory = null;
+
+        // Initialize state manager
+        StateManager.init();
 
         // Load category content
         async function loadCategory(categoryName) {
             const content = document.getElementById('category-content');
             content.innerHTML = '<div class="loading">Loading...</div>';
 
-            try {
+            try { 
                 const response = await fetch(`categories/${categoryName}.html?v=${Date.now()}`);
                 if (!response.ok) throw new Error('Category not found');
 
@@ -103,7 +107,7 @@
                 setupEventListeners();
                 restoreProgress();
                 updateProgress();
-            } catch (error) {
+            } catch (error) { // this catch will currently always trigger 
                 content.innerHTML = '<div class="loading">Error loading category. Please try again.</div>';
             }
         }
@@ -277,41 +281,32 @@
             const totalCamos = 1005; // 67 weapons × 15 camos (9 military + 2 special + 4 mastery)
             const totalWeapons = 67;
 
-            // Count completed camos across all saved data
-            const saved = localStorage.getItem('bo6CamoProgress');
-            let completedCamos = 0;
+            // Get progress from state manager
+            const progress = StateManager.getGlobalProgress();
+            const completedCamos = progress.completed;
             let completedWeapons = 0;
 
-            if (saved) {
-                const progress = JSON.parse(saved);
-                Object.values(progress).forEach(weaponCamos => {
-                    completedCamos += weaponCamos.length;
-                    if (weaponCamos.length === 15) { // All camos for a weapon
+            // Count completed weapons
+            Object.keys(StateManager.state.categories).forEach(category => {
+                Object.keys(StateManager.state.categories[category]).forEach(weaponId => {
+                    if (StateManager.state.categories[category][weaponId].completedCamos.length === 15) {
                         completedWeapons++;
                     }
                 });
-            }
-
-            const percentage = ((completedCamos / totalCamos) * 100).toFixed(1);
+            });
 
             document.getElementById('overall-progress').textContent =
-                `${completedCamos} / ${totalCamos} Camos Completed (${percentage}%)`;
+                `${completedCamos} / ${totalCamos} Camos Completed (${progress.percentage}%)`;
             document.getElementById('weapon-progress').textContent =
                 `${completedWeapons} / ${totalWeapons} Weapons Complete`;
         }
 
         // Export progress to JSON file
         function exportProgress() {
-            const progress = localStorage.getItem('bo6CamoProgress');
-            const collapsed = localStorage.getItem('bo6CollapsedWeapons');
-
             const backup = {
-                version: '1.0',
+                version: '2.0',
                 exportDate: new Date().toISOString(),
-                data: {
-                    bo6CamoProgress: progress ? JSON.parse(progress) : {},
-                    bo6CollapsedWeapons: collapsed ? JSON.parse(collapsed) : []
-                }
+                data: StateManager.state
             };
 
             const dataStr = JSON.stringify(backup, null, 2);
@@ -344,18 +339,16 @@
                     const backup = JSON.parse(e.target.result);
 
                     // Validate backup structure
-                    if (!backup.data || !backup.data.bo6CamoProgress) {
+                    if (!backup.data || !backup.data.categories === undefined) {
                         throw new Error('Invalid backup file format');
                     }
 
                     const confirmMsg = `Import backup from ${backup.exportDate ? new Date(backup.exportDate).toLocaleDateString() : 'unknown date'}?\n\nThis will replace your current progress!`;
 
                     if (confirm(confirmMsg)) {
-                        // Save to localStorage
-                        localStorage.setItem('bo6CamoProgress', JSON.stringify(backup.data.bo6CamoProgress));
-                        if (backup.data.bo6CollapsedWeapons) {
-                            localStorage.setItem('bo6CollapsedWeapons', JSON.stringify(backup.data.bo6CollapsedWeapons));
-                        }
+                        // Update state manager
+                        StateManager.state = backup.data;
+                        StateManager.saveState();
 
                         // Reload current category to reflect changes
                         if (currentCategory) {
@@ -379,12 +372,29 @@
         // Reset all progress
         function resetProgress() {
             if (confirm('Are you sure you want to reset ALL progress? This cannot be undone!')) {
-                localStorage.removeItem('bo6CamoProgress');
-                localStorage.removeItem('bo6CollapsedWeapons');
+                // Reset state manager
+                StateManager.state = {
+                    categories: {},
+                    lastUpdated: new Date().toISOString()
+                };
+                StateManager.saveState();
 
+                // Update UI
                 document.querySelectorAll('.camo-item input[type="checkbox"]').forEach(checkbox => {
                     checkbox.checked = false;
                     checkbox.closest('.camo-item').classList.remove('completed');
+                });
+
+                // Reset weapon complete statuses
+                document.querySelectorAll('.weapon').forEach(weapon => {
+                    const weaponName = weapon.querySelector('.weapon-name');
+                    const completeBtn = weaponName.querySelector('.complete-btn');
+                    if (completeBtn) {
+                        completeBtn.classList.remove('all-complete');
+                        completeBtn.textContent = 'Complete';
+                    }
+                    weaponName.classList.remove('weapon-complete');
+                    weapon.classList.remove('collapsed');
                 });
 
                 updateProgress();
@@ -401,7 +411,7 @@
         // Load first category on page load
         window.addEventListener('load', () => {
             updateProgress(); // Update progress even before loading a category
-            loadCategory('assault-rifles');
+            updateWelcomeMessage();
         });
     </script>
 </body>
