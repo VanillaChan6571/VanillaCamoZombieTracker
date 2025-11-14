@@ -20,13 +20,29 @@
 	<meta name="theme-color" content="#ffffff">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vanilla's Camo Zombies Tracker [BO6]</title>
+    <title>Vanilla's Camo Zombies Tracker</title>
     <link rel="stylesheet" href="styles/global.css">
        
 </head>
 <body>
     <div class="container">
-        <h1>🧟 <span style="color: #ff69b4;">Vanilla's</span> <span style="color: #4ecca3;">Camo Zombies Tracker</span> <span style="color: #ff8c00;">[BO6]</span> 🧟</h1>
+        <h1>🧟 <span style="color: #ff69b4;">Vanilla's</span> <span style="color: #4ecca3;">Camo Zombies Tracker</span> <span id="game-title" style="color: #ff8c00;">[BO6]</span> 🧟</h1>
+
+        <div id="server-warning" style="display: none; background: rgba(233, 69, 96, 0.2); border: 3px solid #e94560; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center;">
+            <h2 style="color: #e94560; margin-bottom: 15px;">⚠️ Local Server Required ⚠️</h2>
+            <p style="font-size: 1.1em; margin-bottom: 10px;">This tracker requires a local web server to function properly.</p>
+            <p style="margin-bottom: 15px;">You're currently viewing this file directly (file://) which prevents loading weapon categories.</p>
+            <div style="background: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <p style="color: #4ecca3; font-weight: bold; margin-bottom: 10px;">Windows Users (Easiest):</p>
+                <p style="margin: 5px 0;">Double-click: <strong style="color: #fff;">Run Local Python Server.bat</strong></p>
+                <p style="margin: 5px 0;">Or: <strong style="color: #fff;">Run Local NodeJs Server.bat</strong></p>
+                <p style="color: #4ecca3; font-weight: bold; margin: 15px 0 10px 0;">Command Line:</p>
+                <p style="font-family: monospace; color: #fff; margin: 5px 0;"><strong>Python:</strong> python -m http.server 8000</p>
+                <p style="font-family: monospace; color: #fff; margin: 5px 0;"><strong>Node.js:</strong> npx serve .</p>
+                <p style="margin-top: 10px; font-size: 0.9em; color: #aaa;">Then open: http://localhost:8000</p>
+            </div>
+            <p style="font-size: 0.9em; color: #aaa;">See README.md for more details.</p>
+        </div>
 
         <div class="progress-summary">
             <h2>Overall Progress</h2>
@@ -35,9 +51,13 @@
         </div>
 
         <div class="info-box" style="text-align: center; background: rgba(255, 105, 180, 0.1); border-color: #ff69b4;">
-            <p><h2><span style="color: #add8e6;">Last Updated: 10/21/2025</span></h2></p>
+            <p><h2><span style="color: #add8e6;">Last BO6 Updated: 10/21/2025</span></h2></p>
 			<p><h3><span style="color: #00ff00;">Last Added: Chainsaw [Melee]</span></h3></p>
+			<p> </p>
+            <p><h2><span style="color: #add8e6;">Last BO7 Updated: 11/14/2025</span></h2></p>
+			<p><h3><span style="color: #00ff00;">Last Added: Black Ops 7 ZM List</span></h3></p>
             <p>💾 Importing/Exporting your .json file can be found at the bottom of the page</p>
+			<p> Works Both for BO6 + BO7 Now! </p>
         </div>
 
         <div class="info-box">
@@ -47,6 +67,11 @@
                 <li><strong>Special Camos (2):</strong> Unique challenges per weapon (see below)</li>
                 <li><strong>Mastery Camos (4):</strong> Mystic Gold, Opal, Afterlife, Nebula (unlock after completing all Special camos)</li>
             </ul>
+        </div>
+
+        <div class="game-selector" style="display: flex; justify-content: center; gap: 10px; margin: 20px 0; flex-wrap: wrap;">
+            <button class="game-btn active" data-game="bo6" style="padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: bold; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">Black Ops 6</button>
+            <button class="game-btn" data-game="bo7" style="padding: 12px 24px; background: #2a2a3e; color: #999; border: 2px solid #444; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: bold; transition: all 0.3s ease;">Black Ops 7</button>
         </div>
 
         <div class="category-tabs">
@@ -76,15 +101,84 @@
     </div>
 
     <script>
+        // Game configuration
+        const gameConfig = {
+            bo6: {
+                name: 'Black Ops 6',
+                displayName: '[BO6]',
+                totalCamos: 1005,
+                totalWeapons: 67,
+                camosPerWeapon: 15,
+                categoryFolder: 'categories-bo6',
+                camoImageSuffix: '_Camo_Icon_BO6.webp',
+                storageKeys: {
+                    progress: 'bo6CamoProgress',
+                    collapsed: 'bo6CollapsedWeapons'
+                }
+            },
+            bo7: {
+                name: 'Black Ops 7',
+                displayName: '[BO7]',
+                totalCamos: 480, // 30 weapons × 16 camos (9 military + 3 special + 4 mastery)
+                totalWeapons: 30,
+                camosPerWeapon: 16,
+                categoryFolder: 'categories-bo7',
+                camoImageSuffix: '_Camo_Icon_BO7.webp',
+                storageKeys: {
+                    progress: 'bo7CamoProgress',
+                    collapsed: 'bo7CollapsedWeapons'
+                }
+            }
+        };
+
+        // Current game state
+        let currentGame = localStorage.getItem('selectedGame') || 'bo6';
         let currentCategory = null;
+
+        // Get current game config
+        function getGameConfig() {
+            return gameConfig[currentGame];
+        }
+
+        // Switch game
+        function switchGame(game) {
+            currentGame = game;
+            localStorage.setItem('selectedGame', game);
+
+            // Update UI
+            document.getElementById('game-title').textContent = gameConfig[game].displayName;
+            document.querySelectorAll('.game-btn').forEach(btn => {
+                if (btn.dataset.game === game) {
+                    btn.classList.add('active');
+                    btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    btn.style.color = 'white';
+                    btn.style.border = 'none';
+                    btn.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+                } else {
+                    btn.classList.remove('active');
+                    btn.style.background = '#2a2a3e';
+                    btn.style.color = '#999';
+                    btn.style.border = '2px solid #444';
+                    btn.style.boxShadow = 'none';
+                }
+            });
+
+            // Reload current category for the new game
+            if (currentCategory) {
+                loadCategory(currentCategory);
+            }
+            updateProgress();
+        }
 
         // Load category content
         async function loadCategory(categoryName) {
             const content = document.getElementById('category-content');
             content.innerHTML = '<div class="loading">Loading...</div>';
 
+            const config = getGameConfig();
+
             try {
-                const response = await fetch(`categories/${categoryName}.html?v=${Date.now()}`);
+                const response = await fetch(`${config.categoryFolder}/${categoryName}.html?v=${Date.now()}`);
                 if (!response.ok) throw new Error('Category not found');
 
                 const html = await response.text();
@@ -111,6 +205,7 @@
 
         // Normalize a camo label into a filesystem-friendly base name
         function normalizeLabelForFile(label) {
+            const config = getGameConfig();
             // Convert "100 Kills" -> "100_Camo_Icon_BO6.webp"
             // Convert "Purple Tiger" -> "PurpleTiger_Camo_Icon_BO6.webp"
             return label
@@ -118,7 +213,7 @@
                 .replace(/\s+/g, '') // remove spaces
                 // Preserve existing capitals, capitalize words
                 .replace(/(?:^|\s)([a-z])/g, m => m.toUpperCase())
-                + '_Camo_Icon_BO6.webp'; // add suffix
+                + config.camoImageSuffix; // add game-specific suffix
         }
 
         // Check whether an image exists at URL
@@ -305,8 +400,9 @@
 
         // Save progress to localStorage
         function saveProgress() {
+            const config = getGameConfig();
             // Load existing progress first
-            const saved = localStorage.getItem('bo6CamoProgress');
+            const saved = localStorage.getItem(config.storageKeys.progress);
             const progress = saved ? JSON.parse(saved) : {};
 
             const checkboxes = document.querySelectorAll('.camo-item input[type="checkbox"]');
@@ -329,12 +425,13 @@
                 }
             });
 
-            localStorage.setItem('bo6CamoProgress', JSON.stringify(progress));
+            localStorage.setItem(config.storageKeys.progress, JSON.stringify(progress));
         }
 
         // Restore progress from localStorage
         function restoreProgress() {
-            const saved = localStorage.getItem('bo6CamoProgress');
+            const config = getGameConfig();
+            const saved = localStorage.getItem(config.storageKeys.progress);
             if (!saved) return;
 
             const progress = JSON.parse(saved);
@@ -362,17 +459,19 @@
 
         // Save collapsed state
         function saveCollapsedState() {
+            const config = getGameConfig();
             const collapsed = [];
             document.querySelectorAll('.weapon.collapsed').forEach(weapon => {
                 const weaponId = weapon.dataset.weapon;
                 if (weaponId) collapsed.push(weaponId);
             });
-            localStorage.setItem('bo6CollapsedWeapons', JSON.stringify(collapsed));
+            localStorage.setItem(config.storageKeys.collapsed, JSON.stringify(collapsed));
         }
 
         // Restore collapsed state
         function restoreCollapsedState() {
-            const saved = localStorage.getItem('bo6CollapsedWeapons');
+            const config = getGameConfig();
+            const saved = localStorage.getItem(config.storageKeys.collapsed);
             if (!saved) return;
 
             const collapsed = JSON.parse(saved);
@@ -386,11 +485,12 @@
 
         // Update overall progress
         function updateProgress() {
-            const totalCamos = 1005; // 67 weapons × 15 camos (9 military + 2 special + 4 mastery)
-            const totalWeapons = 67;
+            const config = getGameConfig();
+            const totalCamos = config.totalCamos;
+            const totalWeapons = config.totalWeapons;
 
             // Count completed camos across all saved data
-            const saved = localStorage.getItem('bo6CamoProgress');
+            const saved = localStorage.getItem(config.storageKeys.progress);
             let completedCamos = 0;
             let completedWeapons = 0;
 
@@ -398,13 +498,14 @@
                 const progress = JSON.parse(saved);
                 Object.values(progress).forEach(weaponCamos => {
                     completedCamos += weaponCamos.length;
-                    if (weaponCamos.length === 15) { // All camos for a weapon
+                    if (weaponCamos.length === config.camosPerWeapon) { // All camos for a weapon
                         completedWeapons++;
                     }
                 });
             }
 
-            const percentage = ((completedCamos / totalCamos) * 100).toFixed(1);
+            // Handle division by zero for BO7 (no weapons yet)
+            const percentage = totalCamos > 0 ? ((completedCamos / totalCamos) * 100).toFixed(1) : '0.0';
 
             document.getElementById('overall-progress').textContent =
                 `${completedCamos} / ${totalCamos} Camos Completed (${percentage}%)`;
@@ -414,15 +515,20 @@
 
         // Export progress to JSON file
         function exportProgress() {
-            const progress = localStorage.getItem('bo6CamoProgress');
-            const collapsed = localStorage.getItem('bo6CollapsedWeapons');
-
+            // Export both games' progress
             const backup = {
-                version: '1.0',
+                version: '2.0', // Updated version to support multi-game
                 exportDate: new Date().toISOString(),
                 data: {
-                    bo6CamoProgress: progress ? JSON.parse(progress) : {},
-                    bo6CollapsedWeapons: collapsed ? JSON.parse(collapsed) : []
+                    bo6: {
+                        progress: JSON.parse(localStorage.getItem('bo6CamoProgress') || '{}'),
+                        collapsed: JSON.parse(localStorage.getItem('bo6CollapsedWeapons') || '[]')
+                    },
+                    bo7: {
+                        progress: JSON.parse(localStorage.getItem('bo7CamoProgress') || '{}'),
+                        collapsed: JSON.parse(localStorage.getItem('bo7CollapsedWeapons') || '[]')
+                    },
+                    selectedGame: localStorage.getItem('selectedGame') || 'bo6'
                 }
             };
 
@@ -432,13 +538,13 @@
 
             const link = document.createElement('a');
             link.href = url;
-            link.download = `bo6-camo-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.download = `camo-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
 
-            alert('Progress exported successfully!');
+            alert('Progress exported successfully! (Both BO6 and BO7 data included)');
         }
 
         // Import progress from JSON file
@@ -456,17 +562,32 @@
                     const backup = JSON.parse(e.target.result);
 
                     // Validate backup structure
-                    if (!backup.data || !backup.data.bo6CamoProgress) {
+                    if (!backup.data) {
                         throw new Error('Invalid backup file format');
                     }
 
-                    const confirmMsg = `Import backup from ${backup.exportDate ? new Date(backup.exportDate).toLocaleDateString() : 'unknown date'}?\n\nThis will replace your current progress!`;
+                    const confirmMsg = `Import backup from ${backup.exportDate ? new Date(backup.exportDate).toLocaleDateString() : 'unknown date'}?\n\nThis will replace your current progress for both games!`;
 
                     if (confirm(confirmMsg)) {
-                        // Save to localStorage
-                        localStorage.setItem('bo6CamoProgress', JSON.stringify(backup.data.bo6CamoProgress));
-                        if (backup.data.bo6CollapsedWeapons) {
-                            localStorage.setItem('bo6CollapsedWeapons', JSON.stringify(backup.data.bo6CollapsedWeapons));
+                        // Handle both old (v1.0) and new (v2.0) backup formats
+                        if (backup.version === '2.0' && backup.data.bo6 && backup.data.bo7) {
+                            // New format with both games
+                            localStorage.setItem('bo6CamoProgress', JSON.stringify(backup.data.bo6.progress));
+                            localStorage.setItem('bo6CollapsedWeapons', JSON.stringify(backup.data.bo6.collapsed));
+                            localStorage.setItem('bo7CamoProgress', JSON.stringify(backup.data.bo7.progress));
+                            localStorage.setItem('bo7CollapsedWeapons', JSON.stringify(backup.data.bo7.collapsed));
+                            if (backup.data.selectedGame) {
+                                localStorage.setItem('selectedGame', backup.data.selectedGame);
+                                switchGame(backup.data.selectedGame);
+                            }
+                        } else if (backup.data.bo6CamoProgress !== undefined) {
+                            // Old format (v1.0) - only BO6 data
+                            localStorage.setItem('bo6CamoProgress', JSON.stringify(backup.data.bo6CamoProgress));
+                            if (backup.data.bo6CollapsedWeapons) {
+                                localStorage.setItem('bo6CollapsedWeapons', JSON.stringify(backup.data.bo6CollapsedWeapons));
+                            }
+                        } else {
+                            throw new Error('Unrecognized backup format');
                         }
 
                         // Reload current category to reflect changes
@@ -490,18 +611,49 @@
 
         // Reset all progress
         function resetProgress() {
-            if (confirm('Are you sure you want to reset ALL progress? This cannot be undone!')) {
-                localStorage.removeItem('bo6CamoProgress');
-                localStorage.removeItem('bo6CollapsedWeapons');
+            const resetBothGames = confirm('Do you want to reset progress for BOTH games?\n\nClick OK to reset both games, or Cancel to reset only the current game.');
 
-                document.querySelectorAll('.camo-item input[type="checkbox"]').forEach(checkbox => {
-                    checkbox.checked = false;
-                    checkbox.closest('.camo-item').classList.remove('completed');
-                });
+            if (resetBothGames) {
+                if (confirm('Are you sure you want to reset ALL progress for BOTH games? This cannot be undone!')) {
+                    // Reset both games
+                    localStorage.removeItem('bo6CamoProgress');
+                    localStorage.removeItem('bo6CollapsedWeapons');
+                    localStorage.removeItem('bo7CamoProgress');
+                    localStorage.removeItem('bo7CollapsedWeapons');
 
-                updateProgress();
+                    document.querySelectorAll('.camo-item input[type="checkbox"]').forEach(checkbox => {
+                        checkbox.checked = false;
+                        checkbox.closest('.camo-item').classList.remove('completed');
+                    });
+
+                    updateProgress();
+                    alert('All progress for both games has been reset.');
+                }
+            } else {
+                // Reset current game only
+                const config = getGameConfig();
+                const gameName = config.name;
+                if (confirm(`Are you sure you want to reset ALL progress for ${gameName}? This cannot be undone!`)) {
+                    localStorage.removeItem(config.storageKeys.progress);
+                    localStorage.removeItem(config.storageKeys.collapsed);
+
+                    document.querySelectorAll('.camo-item input[type="checkbox"]').forEach(checkbox => {
+                        checkbox.checked = false;
+                        checkbox.closest('.camo-item').classList.remove('completed');
+                    });
+
+                    updateProgress();
+                    alert(`Progress for ${gameName} has been reset.`);
+                }
             }
         }
+
+        // Game selector click handlers
+        document.querySelectorAll('.game-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                switchGame(btn.dataset.game);
+            });
+        });
 
         // Tab click handlers
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -512,6 +664,15 @@
 
         // Load first category on page load
         window.addEventListener('load', () => {
+            // Check if running without a web server (file:// protocol)
+            if (window.location.protocol === 'file:') {
+                document.getElementById('server-warning').style.display = 'block';
+                console.error('⚠️ This app requires a local web server. Please run: python -m http.server 8000');
+                return; // Stop initialization if not running on a server
+            }
+
+            // Initialize game selector UI
+            switchGame(currentGame);
             updateProgress(); // Update progress even before loading a category
             loadCategory('assault-rifles');
         });
