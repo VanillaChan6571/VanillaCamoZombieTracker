@@ -241,7 +241,6 @@ VanillaCamoZombieTracker/
 ├── styles/                    # CSS files
 │   └── global.css
 ├── favicon/                   # Favicon assets
-├── CLAUDE.md                  # Development guide (private)
 └── README.md                  # This file
 ```
 
