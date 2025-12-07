@@ -54,15 +54,15 @@
             <p><h2><span style="color: #add8e6;">Last BO6 Updated: 10/21/2025</span></h2></p>
 			<p><h3><span style="color: #00ff00;">Last Added: Chainsaw [Melee]</span></h3></p>
 			<p> </p>
-            <p><h2><span style="color: #add8e6;">Last BO7 Updated: 11/14/2025</span></h2></p>
-			<p><h3><span style="color: #00ff00;">Last Added: Black Ops 7 ZM List</span></h3></p>
+            <p><h2><span style="color: #add8e6;">Last BO7 Updated: 12/05/2025</span></h2></p>
+			<p><h3><span style="color: #00ff00;">Last Added: Season 1 Update, 3 Weapons Added.</span></h3></p>
             <p>💾 Importing/Exporting your .json file can be found at the bottom of the page</p>
 			<p> Works Both for BO6 + BO7 Now! </p>
         </div>
 
         <div class="info-box">
             <h3>📋 Camo Structure (All Weapons)</h3>
-            <ul>
+            <ul id="camo-structure-list">
                 <li><strong>Military Camos (9):</strong> 100, 200, 300, 400, 600, 800, 1000, 1500, 2000 Critical Kills (Headshots)</li>
                 <li><strong>Special Camos (2):</strong> Unique challenges per weapon (see below)</li>
                 <li><strong>Mastery Camos (4):</strong> Mystic Gold, Opal, Afterlife, Nebula (unlock after completing all Special camos)</li>
@@ -119,8 +119,8 @@
             bo7: {
                 name: 'Black Ops 7',
                 displayName: '[BO7]',
-                totalCamos: 480, // 30 weapons × 16 camos (9 military + 3 special + 4 mastery)
-                totalWeapons: 30,
+                totalCamos: 528, // 33 weapons × 16 camos (9 military + 3 special + 4 mastery)
+                totalWeapons: 33,
                 camosPerWeapon: 16,
                 categoryFolder: 'categories-bo7',
                 camoImageSuffix: '_Camo_Icon_BO7.webp',
@@ -141,6 +141,28 @@
         }
 
         // Switch game
+        // Update camo structure info box based on current game
+        function updateCamoStructureInfo() {
+            const structureList = document.getElementById('camo-structure-list');
+            if (!structureList) return;
+
+            const config = getGameConfig();
+
+            if (currentGame === 'bo6') {
+                structureList.innerHTML = `
+                    <li><strong>Military Camos (9):</strong> 100, 200, 300, 400, 600, 800, 1000, 1500, 2000 Critical Kills</li>
+                    <li><strong>Special Camos (2):</strong> Unique challenges per weapon (see below)</li>
+                    <li><strong>Mastery Camos (4):</strong> Mystic Gold, Opal, Afterlife, Nebula (unlock after completing all Special camos)</li>
+                `;
+            } else if (currentGame === 'bo7') {
+                structureList.innerHTML = `
+                    <li><strong>Military Camos (9):</strong> 100, 200, 300, 400, 500, 600, 700, 800, 1000 Headshots</li>
+                    <li><strong>Special Camos (3):</strong> Unique challenges per weapon (Mutilate, Slither, Pathfinder) [See Below]</li>
+                    <li><strong>Mastery Camos (4):</strong> Golden Dragon (10 Rapid Kills 15 Times), Bloodstone (20 Kills without taking damage), Doomsteel (10 Elite Kills), Infestation (Doomsteel on 30 Weapons), (unlock after completing all Special camos)</li>
+                `;
+            }
+        }
+
         function switchGame(game) {
             currentGame = game;
             localStorage.setItem('selectedGame', game);
@@ -162,6 +184,9 @@
                     btn.style.boxShadow = 'none';
                 }
             });
+
+            // Update camo structure info
+            updateCamoStructureInfo();
 
             // Reload current category for the new game
             if (currentCategory) {
@@ -326,6 +351,85 @@
                 checkbox.addEventListener('change', function() {
                     const camoItem = this.closest('.camo-item');
                     const weapon = this.closest('.weapon');
+                    const label = camoItem.querySelector('label');
+                    const camoName = label ? label.textContent.trim() : '';
+
+                    // QoL: Auto-check previous camos for mastery camos
+                    if (this.checked) {
+                        const camoSections = weapon.querySelectorAll('.camo-section');
+                        const masteryCamos = ['Golden Dragon', 'Bloodstone', 'Doomsteel'];
+
+                        if (camoName === 'Golden Dragon') {
+                            // Check military (first section) and special (second section) camos
+                            for (let i = 0; i < Math.min(2, camoSections.length); i++) {
+                                const section = camoSections[i];
+                                const sectionCheckboxes = section.querySelectorAll('.camo-item input[type="checkbox"]');
+                                sectionCheckboxes.forEach(cb => {
+                                    if (!cb.checked) {
+                                        cb.checked = true;
+                                        cb.closest('.camo-item').classList.add('completed');
+                                    }
+                                });
+                            }
+                        } else if (camoName === 'Bloodstone') {
+                            // Check military, special, and Golden Dragon
+                            for (let i = 0; i < Math.min(2, camoSections.length); i++) {
+                                const section = camoSections[i];
+                                const sectionCheckboxes = section.querySelectorAll('.camo-item input[type="checkbox"]');
+                                sectionCheckboxes.forEach(cb => {
+                                    if (!cb.checked) {
+                                        cb.checked = true;
+                                        cb.closest('.camo-item').classList.add('completed');
+                                    }
+                                });
+                            }
+                            // Also check Golden Dragon
+                            const masterySection = camoSections[camoSections.length - 1];
+                            if (masterySection) {
+                                const goldenDragonItem = Array.from(masterySection.querySelectorAll('.camo-item')).find(item => {
+                                    const lbl = item.querySelector('label');
+                                    return lbl && lbl.textContent.trim() === 'Golden Dragon';
+                                });
+                                if (goldenDragonItem) {
+                                    const cb = goldenDragonItem.querySelector('input[type="checkbox"]');
+                                    if (cb && !cb.checked) {
+                                        cb.checked = true;
+                                        goldenDragonItem.classList.add('completed');
+                                    }
+                                }
+                            }
+                        } else if (camoName === 'Doomsteel') {
+                            // Check military, special, Golden Dragon, and Bloodstone
+                            for (let i = 0; i < Math.min(2, camoSections.length); i++) {
+                                const section = camoSections[i];
+                                const sectionCheckboxes = section.querySelectorAll('.camo-item input[type="checkbox"]');
+                                sectionCheckboxes.forEach(cb => {
+                                    if (!cb.checked) {
+                                        cb.checked = true;
+                                        cb.closest('.camo-item').classList.add('completed');
+                                    }
+                                });
+                            }
+                            // Also check Golden Dragon and Bloodstone
+                            const masterySection = camoSections[camoSections.length - 1];
+                            if (masterySection) {
+                                ['Golden Dragon', 'Bloodstone'].forEach(camoToCheck => {
+                                    const camoItem = Array.from(masterySection.querySelectorAll('.camo-item')).find(item => {
+                                        const lbl = item.querySelector('label');
+                                        return lbl && lbl.textContent.trim() === camoToCheck;
+                                    });
+                                    if (camoItem) {
+                                        const cb = camoItem.querySelector('input[type="checkbox"]');
+                                        if (cb && !cb.checked) {
+                                            cb.checked = true;
+                                            camoItem.classList.add('completed');
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+
                     camoItem.classList.toggle('completed', this.checked);
                     updateCompleteButtonState(weapon);
                     saveProgress();
